@@ -1,0 +1,38 @@
+# Fig.1_PCoA
+install.packages(c("ggplot2", "vegan", "plyr"))
+library(vegan)
+library(ggplot2)
+library(plyr)
+otu <- read.delim('ARG.txt', row.names=1, sep = '\t', stringsAsFactors = F, check.names=F)
+otu <- data.frame(t(otu))
+otu <- otu[rowSums(otu) > 0, ]
+group <- read.delim('group.txt', sep = '\t', stringsAsFactors = F)
+distance <- vegdist(otu, method = 'bray')
+pcoa <- cmdscale(distance, k = (nrow(otu) - 1), eig = TRUE)
+ordiplot(scores(pcoa)[ ,c(1, 2)], type = 't')
+summary(pcoa)
+pcoa_eig <- (pcoa$eig)[1:2] / sum(pcoa$eig)
+sample_site <- data.frame({pcoa$point})[1:2]
+sample_site$names <- rownames(sample_site)
+names(sample_site)[1:2] <- c('PCoA1', 'PCoA2')
+sample_site <- merge(sample_site, group, by = 'names', all.x = TRUE)
+sample_site$type <- factor(sample_site$type, levels = c('pig manure', 'mixed', 'Chicken manure', 'Cattle manure', 'unknow'))
+sample_site$TC <- factor(sample_site$TC, levels = c('thermophilic', 'mesophile','un'))
+group_border <- ddply(sample_site, 'type', function(df) df[chull(df[[2]], df[[3]]), ])
+pcoa_plot <- ggplot(sample_site, aes(PCoA1, PCoA2, group = type)) +
+  theme(panel.grid = element_line(color = 'gray', linetype = 2, size = 0.1), panel.background = element_rect(color = 'black', fill = 'transparent'), legend.key = element_rect(fill = 'transparent')) + 
+  geom_vline(xintercept = 0, color = 'gray', size = 0.4) + 
+  geom_hline(yintercept = 0, color = 'gray', size = 0.4) +
+  geom_polygon(data = group_border, aes(fill = type), alpha = 0.2) + 
+  geom_point(aes(color = TC), size = 1.5, alpha = 0.8) + 
+  scale_shape_manual(values = c(17, 16)) + 
+  scale_color_manual(values = c('yellow', 'red', 'orange')) + 
+  scale_fill_manual(values = c('#C673FF2E', '#73D5FF2E', '#49C35A2E', '#FF985C2E','black')) + 
+  guides(fill = guide_legend(order = 1), shape = guide_legend(order = 2), color = guide_legend(order = 3)) + 
+  labs(x = paste('PCoA axis1: ', round(100 * pcoa_eig[1], 2), '%'), y = paste('PCoA axis2: ', round(100 * pcoa_eig[2], 2), '%')) +
+  annotate('text', label = 'pig manure', x = 0.31, y = -0.18, size = 5, colour = '#C673FF') +
+  annotate('text', label = 'Chicken manure', x = 0.25, y = -0.05, size = 5, colour = '#73D5FF') +
+  annotate('text', label = 'Cattle manure', x = -0.1, y = -0.2, size = 5, colour = '#49C35A') +
+  annotate('text', label = 'mixed', x = -0.25, y = -0.3, size = 5, colour = '#FF985C')+
+  annotate('text', label = 'un', x = -0.2, y = 0.05, size = 5, colour = '#FF985C')
+plot(pcoa_plot)
