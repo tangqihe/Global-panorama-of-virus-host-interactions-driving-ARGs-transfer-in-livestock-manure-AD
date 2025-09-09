@@ -1,5 +1,9 @@
 # 01QC_module.sh
 #!/bin/bash
+#SBATCH --job-name=myjob_name
+#SBATCH --chdir=/work/<USERNAME>
+#SBATCH --output=/work/%u/%x-%j.log
+#SBATCH --time=0-00:30:00
 source deactivate
 conda activate base
 conda activate metawrap-env
